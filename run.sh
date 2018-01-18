@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 BASE=/elasticsearch
 
@@ -51,6 +51,19 @@ fi
 if [[ $(whoami) == "root" ]]; then
     chown -R elasticsearch:elasticsearch $BASE
     chown -R elasticsearch:elasticsearch /data
+
+    for item in ${!ES_KEYSTORE_*}; do
+        value=${!item}
+        item=${item##ES_KEYSTORE_} # Strip away prefix
+        item=${item,,}             # Lowercase
+        item=${item//__/.}         # Replace double underscore with dot
+
+	if [ ! -f  $BASE/config/elasticsearch.keystore ]; then
+            su-exec elasticsearch $BASE/bin/elasticsearch-keystore create
+	fi
+    	su-exec elasticsearch $BASE/bin/elasticsearch-keystore add -x $item <<< ${value}
+    done
+
     exec su-exec elasticsearch $BASE/bin/elasticsearch $ES_EXTRA_ARGS
 else
     # the container's first process is not running as 'root', 
@@ -59,5 +72,16 @@ else
     # the volumes already have the right permissions. this is
     # the case for kubernetes for example, when 'runAsUser: 1000'
     # and 'fsGroup:100' are defined in the pod's security context.
+    for item in ${!ES_KEYSTORE_*}; do
+        value=${!item}
+        item=${item##ES_KEYSTORE_} # Strip away prefix
+        item=${item,,}             # Lowercase
+        item=${item//__/.}         # Replace double underscore with dot
+
+	if [ ! -f  $BASE/config/elasticsearch.keystore ]; then
+            su-exec elasticsearch $BASE/bin/elasticsearch-keystore create
+	fi
+    	$BASE/bin/elasticsearch-keystore add -x $item <<< ${value}
+    done
     $BASE/bin/elasticsearch $ES_EXTRA_ARGS
 fi
