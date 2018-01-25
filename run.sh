@@ -47,6 +47,14 @@ if [ ! -z "${SHARD_ALLOCATION_AWARENESS_ATTR}" ]; then
     fi
 fi
 
+for item in ${!ES_CONFIG_*}; do
+    value=${!item}
+    item=${item##ES_CONFIG_}   # Strip away prefix
+    item=${item,,}             # Lowercase
+    item=${item//__/.}         # Replace double underscore with dot
+    echo "${item}: ${value}" >> $BASE/config/elasticsearch.yml
+done
+
 # run
 if [[ $(whoami) == "root" ]]; then
     chown -R elasticsearch:elasticsearch $BASE
